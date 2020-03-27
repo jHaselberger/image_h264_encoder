@@ -141,7 +141,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
 }
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "image_to_h264_encoder");
+    ros::init(argc, argv, "image_h264_encoder");
     ros::NodeHandle n("~");
 
     // get some parameters

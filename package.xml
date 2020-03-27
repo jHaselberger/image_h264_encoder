@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>image_to_h264_encoder</name>
+  <name>image_h264_encoder</name>
   <version>0.0.0</version>
-  <description>The image_to_h264_encoder package</description>
+  <description>The image_h264_encoder package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
