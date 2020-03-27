@@ -1,5 +1,70 @@
-# Installation
-## Fix if openCV is not found
+# Usage
+Example:
+```xml
+<launch>
+  <node name="h264_encoder" pkg="image_h264_encoder" type="image_h264_encoder_node" output="log">
+    <param name="fps" value="20" />
+    <param name="bitrate" value="10000" />
+    <param name="decoderType" value="0" />
+    <param name="logFilePath" value="/tmp/rec/h264Encoder.txt" />
+    <param name="targetLocation" value="/tmp/rec/h264Encoder10k.mp4" />
+  </node>
+</launch>
+```
+
+# Dependencies
+## NVIDIA H264 encoder
+ 1. Download the Vision SDK from https://developer.nvidia.com/nvidia-video-codec-sdk/download 
+ 2. check if current nvidia driver is sufficent with `nvidia-smi`
+ 3. Install the SDK:
+ ```shell
+unzip Video_Codec_SDK.zip
+cd Video_Codec_SDK
+
+sudo cp include/* /usr/local/cuda/include
+sudo cp Lib/linux/stubs/x86_64/* /usr/local/cuda/lib64/stubs
+ ```
+ 
+ 4. Get GStreamer Bad plugins
+ ```shell
+ git clone https://github.com/GStreamer/gst-plugins-bad.git
+cd gst-plugins-bad
+
+git checkout $(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1)
+
+./autogen.sh --disable-gtk-doc --noconfigure
+
+export NVENCODE_CFLAGS="-I/usr/local/cuda/include"
+./configure --with-cuda-prefix="/usr/local/cuda"
+ ```
+
+5. Check output to confirm that nvenc, nvdec plugins is going to be build
+
+6. Build and install nvenc
+```
+cd sys/nvenc
+make 
+sudo make install
+cd ../..
+```
+
+7. Build and install nvdec
+```
+cd sys/nvdec
+make 
+sudo make install
+cd ../..
+```
+
+8. Add GST_PLUGIN_PATH to bashrc
+```
+echo "export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/usr/local/lib/gstreamer-1.0/" >> ~/.bashrc
+source ~/.bashrc
+```
+
+# Common issues
+## openCV is not found
+In some cases catkin searches for `opencv`, a symbolic link fixes the issue: 
 ```
 sudo ln -s /usr/include/opencv4/ /usr/include/opencv
 ```
