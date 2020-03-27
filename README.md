@@ -1,2 +1,5 @@
-# image_h264_encoder
-ROS package for hardware accelerated encoding of images to h264 mp4.
+# Installation
+## Fix if openCV is not found
+```
+sudo ln -s /usr/include/opencv4/ /usr/include/opencv
+```
