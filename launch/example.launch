@@ -1,7 +1,7 @@
 <!-- -->
 <launch>
 
-  <node name="h264_encoder" pkg="image_to_h264_encoder" type="image_to_h264_encoder_node" output="log">
+  <node name="h264_encoder" pkg="image_h264_encoder" type="image_h264_encoder_node" output="log">
     <param name="fps" value="20" />
     <param name="bitrate" value="10000" />
     <param name="decoderType" value="0" />
@@ -14,7 +14,7 @@
     <remap from="~image" to="/carla/ego_vehicle/camera/rgb/front/image_color" />
   </node>
 
-  <node name="h264_encoder_depth" pkg="image_to_h264_encoder" type="image_to_h264_encoder_node" output="log">
+  <node name="h264_encoder_depth" pkg="image_h264_encoder" type="image_h264_encoder_node" output="log">
     <param name="fps" value="20" />
     <param name="bitrate" value="10000" />
     <param name="decoderType" value="0" />
