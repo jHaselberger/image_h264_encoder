@@ -1,20 +1,22 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
+
 #include <chrono>
+#include <fstream>
+#include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
-#include "ros/ros.h"
-#include "std_msgs/Header.h"
-#include "std_msgs/String.h"
 
 #include "boost/date_time/posix_time/posix_time.hpp"
 #include "boost/format.hpp"
-
-#include <fstream>
-#include <iostream>
+#include "ros/ros.h"
+#include "std_msgs/Header.h"
+#include "std_msgs/String.h"
 using namespace std;
+
+bool debugmode = false;
 
 int _imageHeight = -1;
 int _imageWidth = -1;
@@ -44,9 +46,48 @@ string _location = "/tmp/pipe.mp4";
 // Publisher for the image header
 ros::Publisher pub;
 
-bool initialize(int w, int h, int decoderType = 0) {
+void _logDebug(std::string what, bool enable = debugmode) {
+    if (enable) {
+        std::cout << "\n\t-> " << what << std::endl;
+    }
+}
+
+// found here: https://stackoverflow.com/questions/3418231/replace-part-of-a-string-with-another-string
+bool _replace(std::string &str, const std::string &from, const std::string &to) {
+    size_t start_pos = str.find(from);
+    if (start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
+}
+
+// found here: https://stackoverflow.com/questions/3418231/replace-part-of-a-string-with-another-string
+void _replaceAll(std::string &str, const std::string &from, const std::string &to) {
+    if (from.empty())
+        return;
+    size_t start_pos = 0;
+    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length();  // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    }
+}
+
+bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
+    _logDebug("call initialize");
+
     _imageHeight = h;
     _imageWidth = w;
+
+    std::string _dot = ".";
+    std::string timeStamp = ts;
+    _replaceAll(timeStamp,".","-");
+
+    std::string _locationTS = _location;
+    _replace(_locationTS, ".", timeStamp.append(_dot));
+    _replaceAll(_locationTS, ":", "-");
+
+    std::string _logFilePathTS = _locationTS;
+    _replace(_logFilePathTS, ".mp4", ".txt");
 
     switch (decoderType) {
         case 0:
@@ -68,12 +109,13 @@ bool initialize(int w, int h, int decoderType = 0) {
     }
 
     try {
-        string _gstPipeline = boost::str(boost::format(_gstPipelineTemplate) % _encoder % _bitrate % _parser % _location);
+        string _gstPipeline = boost::str(boost::format(_gstPipelineTemplate) % _encoder % _bitrate % _parser % _locationTS);
         ROS_INFO("GSTP: %s", _gstPipeline.c_str());
         videoWriter.open(_gstPipeline, cv::CAP_GSTREAMER, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
-        logFile = new ofstream(logFilePath);
+        logFile = new ofstream(_logFilePathTS);
 
         *logFile << "Recording options: " << _encoder << " bitrate=" << _bitrate << "\n";
+        *logFile << "fileFrameNumber" << " " << "seq" << " " << "timeStamp" << "\n";
 
         return true;
     } catch (const std::exception &e) {
@@ -87,10 +129,13 @@ string getTimeStampString(ros::Time rosTime) {
 }
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
+    _logDebug("Entering image callback");
     auto start = std::chrono::high_resolution_clock::now();
     // get some information from the header
     uint32_t _seq = msg->header.seq;
     ros::Time _stamp = msg->header.stamp;
+
+    _logDebug("Start getting the image data");
 
     cv_bridge::CvImagePtr cv_ptr;
     if (_isDepthImage) {
@@ -110,15 +155,21 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     } else {
         try {
             cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+            _logDebug("Successfully fetched image pointer");
         } catch (cv_bridge::Exception &e) {
+            _logDebug("Error while getting the image pointer");
             ROS_ERROR("RGBImage: cv_bridge exception: %s", e.what());
             return;
         }
     }
 
+    _logDebug("Now check for init");
+
     // do we have to initialize?
     if (_imageHeight == -1) {
-        assert(("Error during initialization", initialize(cv_ptr->image.cols, cv_ptr->image.rows, _decoderType)));
+        _logDebug("Yes we have to init");
+        //assert(("Error during initialization", initialize(cv_ptr->image.cols, cv_ptr->image.rows, _decoderType)));
+        _initialize(cv_ptr->image.cols, cv_ptr->image.rows, getTimeStampString(_stamp), _decoderType);
     }
 
     // write the image to the h264 file
