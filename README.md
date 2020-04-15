@@ -27,6 +27,7 @@ sudo cp Lib/linux/stubs/x86_64/* /usr/local/cuda/lib64/stubs
  
  4. Get GStreamer Bad plugins
  ```shell
+ sudo apt-get install gstreamer1.0-plugins-bad
  git clone https://github.com/GStreamer/gst-plugins-bad.git
 cd gst-plugins-bad
 
