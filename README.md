@@ -69,3 +69,4 @@ In some cases catkin searches for `opencv`, a symbolic link fixes the issue:
 ```
 sudo ln -s /usr/include/opencv4/ /usr/include/opencv
 ```
+If OpenCV is still not found, try to set the path hardcoded in: https://github.com/gismo07/image_h264_encoder/blob/91592d2c98ae520c667db9b2119449322768cf67/CMakeLists.txt#L11
