@@ -8,7 +8,7 @@ project(image_h264_encoder)
 ##include_directories(${OpenCV_INCLUDE_DIRS})
 
 ## BUG fix for opencv on superUFO
-set("OpenCV_DIR" "/usr/local/lib/cmake/opencv4/")
+#set("OpenCV_DIR" "/usr/local/lib/cmake/opencv4/")
 #find_package(OpenCV 4.0.0 REQUIRED)
 
 ## Find catkin macros and libraries
