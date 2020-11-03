@@ -13,6 +13,23 @@ Example:
 ```
 
 # Dependencies
+## OpenCV
+Make sure that your OpenCV build supports GStreamer.  
+Use python to querry the build configuration:
+```python
+import cv2
+print(cv2.getBuildInformation())
+```
+Check for GStreamer support:
+```txt
+GStreamer:                   
+  base:                      YES (ver 1.8.3)
+  video:                     YES (ver 1.8.3)
+  app:                       YES (ver 1.8.3)
+  riff:                      YES (ver 1.8.3)
+  pbutils:                   YES (ver 1.8.3)
+```
+
 ## NVIDIA H264 encoder
  1. Download the Vision SDK from https://developer.nvidia.com/nvidia-video-codec-sdk/download 
  2. check if current nvidia driver is sufficent with `nvidia-smi`
@@ -69,4 +86,8 @@ In some cases catkin searches for `opencv`, a symbolic link fixes the issue:
 ```
 sudo ln -s /usr/include/opencv4/ /usr/include/opencv
 ```
-If OpenCV is still not found, try to set the path hardcoded in: https://github.com/gismo07/image_h264_encoder/blob/91592d2c98ae520c667db9b2119449322768cf67/CMakeLists.txt#L11
+If OpenCV is still not found, try to set the environment variable `OpenCV_DIR`.
+
+## OpenCV version specific videowriter
+OpenCV changed the behavior of the videwriter class.  
+To enable support for OpenCV 4 adjust the `OPENCVVERSION` to 4 in the [encoder source file](https://github.com/gismo07/image_h264_encoder/blob/13539635c424023b531f81006d5609f43a112d2e/src/image_h264_encoder_node.cpp#L1).
