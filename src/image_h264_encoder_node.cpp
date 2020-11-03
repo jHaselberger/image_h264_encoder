@@ -1,3 +1,6 @@
+#define OPENCVVERSION 3
+
+
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
@@ -111,7 +114,14 @@ bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
     try {
         string _gstPipeline = boost::str(boost::format(_gstPipelineTemplate) % _encoder % _bitrate % _parser % _locationTS);
         ROS_INFO("GSTP: %s", _gstPipeline.c_str());
+        
+#if OPENCVVERSION==3
+        videoWriter.open(_gstPipeline, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
+#else
         videoWriter.open(_gstPipeline, cv::CAP_GSTREAMER, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
+#endif
+        
+        
         logFile = new ofstream(_logFilePathTS);
 
         *logFile << "Recording options: " << _encoder << " bitrate=" << _bitrate << "\n";
