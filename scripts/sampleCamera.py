@@ -21,13 +21,13 @@ bridge = CvBridge()
 while not rospy.is_shutdown():
 
     if not cam.isOpened():
-        rospy.logwarning("Capture was closed so reopen it!")
+        rospy.logwarn("Capture was closed so reopen it!")
         cam = cv2.VideoCapture(videoPath)
 
     ok, frame = cam.read()
 
     if not ok:
-        rospy.logwarning("Capture was closed so reopen it!")
+        rospy.logwarn("Capture was closed so reopen it!")
         cam = cv2.VideoCapture(videoPath)
         continue
 
@@ -38,5 +38,5 @@ while not rospy.is_shutdown():
 
     rate.sleep()
 
-rospy.logwarning("Closing capture!")
+rospy.logwarn("Closing capture!")
 cam.close()
