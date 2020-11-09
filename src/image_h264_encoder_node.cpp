@@ -1,6 +1,5 @@
 #define OPENCVVERSION 3
 
-
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
@@ -31,11 +30,12 @@ ofstream *logFile = nullptr;
 int _currentFrame = 0;
 int _decoderType = 0;
 
-// Support for depth images
+// Support for gray and depth images
+bool _isGrayImage = false;
 bool _isDepthImage = false;
 float _maxDepth = 100.0;
 cv::Mat *monoImg = nullptr;
-cv::Mat rgbDepthImg;
+cv::Mat rgbImg;
 
 // Define the basic Gstreamer pipeline
 string _gstPipelineTemplate = "appsrc ! videoconvert ! %s bitrate=%d ! %s mp4mux ! filesink location=%s ";
@@ -83,7 +83,7 @@ bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
 
     std::string _dot = ".";
     std::string timeStamp = ts;
-    _replaceAll(timeStamp,".","-");
+    _replaceAll(timeStamp, ".", "-");
 
     std::string _locationTS = _location;
     _replace(_locationTS, ".", timeStamp.append(_dot));
@@ -114,18 +114,22 @@ bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
     try {
         string _gstPipeline = boost::str(boost::format(_gstPipelineTemplate) % _encoder % _bitrate % _parser % _locationTS);
         ROS_INFO("GSTP: %s", _gstPipeline.c_str());
-        
-#if OPENCVVERSION==3
+
+#if OPENCVVERSION == 3
         videoWriter.open(_gstPipeline, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
 #else
         videoWriter.open(_gstPipeline, cv::CAP_GSTREAMER, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
 #endif
-        
-        
+
         logFile = new ofstream(_logFilePathTS);
 
         *logFile << "Recording options: " << _encoder << " bitrate=" << _bitrate << "\n";
-        *logFile << "fileFrameNumber" << " " << "seq" << " " << "timeStamp" << "\n";
+        *logFile << "fileFrameNumber"
+                 << " "
+                 << "seq"
+                 << " "
+                 << "timeStamp"
+                 << "\n";
 
         return true;
     } catch (const std::exception &e) {
@@ -155,13 +159,22 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
                 monoImg = new cv::Mat(cv_ptr->image.size(), CV_8UC1);
             }
             cv::convertScaleAbs(cv_ptr->image, *monoImg, 255.0 / _maxDepth, 0.0);
-            cv::cvtColor(*monoImg, rgbDepthImg, cv::COLOR_GRAY2RGB);
+            cv::cvtColor(*monoImg, rgbImg, cv::COLOR_GRAY2RGB);
         } catch (const std::exception &e) {
             ROS_ERROR("DepthImage: cv_bridge exception: %s", e.what());
             std::cerr << e.what() << '\n';
             return;
         }
 
+    } else if (_isGrayImage) {
+        try {
+            cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
+            cv::cvtColor(cv_ptr->image, rgbImg, cv::COLOR_GRAY2RGB);  // TODO: or maybe the pointer *cv_ptr->image
+        } catch (const std::exception &e) {
+            ROS_ERROR("Gray: cv_bridge exception: %s", e.what());
+            std::cerr << e.what() << '\n';
+            return;
+        }
     } else {
         try {
             cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
@@ -183,8 +196,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     }
 
     // write the image to the h264 file
-    if (_isDepthImage) {
-        videoWriter.write(rgbDepthImg);
+    if (_isDepthImage || _isGrayImage) {
+        videoWriter.write(rgbImg);
     } else {
         videoWriter.write(cv_ptr->image);
     }
@@ -213,6 +226,7 @@ int main(int argc, char **argv) {
     n.getParam("targetLocation", _location);
 
     n.getParam("isDepthImage", _isDepthImage);
+    n.getParam("isGrayImage", _isGrayImage);
     n.getParam("maxDepth", _maxDepth);
 
     ros::Subscriber sub = n.subscribe("image", 1000, imageCallback);
