@@ -24,7 +24,12 @@ while not rospy.is_shutdown():
         rospy.logwarning("Capture was closed so reopen it!")
         cam = cv2.VideoCapture(videoPath)
 
-    meta, frame = cam.read()
+    ok, frame = cam.read()
+
+    if not ok:
+        rospy.logwarning("Capture was closed so reopen it!")
+        cam = cv2.VideoCapture(videoPath)
+        continue
 
     frameMono = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
