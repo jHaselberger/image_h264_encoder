@@ -28,11 +28,8 @@ while not rospy.is_shutdown():
 
     frameMono = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    msg_frame = bridge.cv2_to_imgmsg(frame, encoding="passthrough")
-    msg_frame_mono = bridge.cv2_to_imgmsg(frameMono, encoding="passthrough")
-
-    VideoRaw.publish(msg_frame, "bgr8")
-    VideoRawMono.publish(msg_frame_mono, "mono8")
+    VideoRaw.publish(bridge.cv2_to_imgmsg(frame, "bgr8"))
+    VideoRawMono.publish(bridge.cv2_to_imgmsg(frameMono, "mono8"))
 
     rate.sleep()
 
