@@ -5,10 +5,10 @@
     <param name="fps" value="30" />
         <!-- <param name="bitrate" value="$(arg recording_bitrate)" /> -->
         <param name="decoderType" value="0" />
-        <param name="logFilePath" value="/tmp/h264Encoder_front.txt" />
-        <param name="targetLocation" value="/tmp/h264Encoder_front.mp4" />
+        <param name="logFilePath" value="/sampleData/h264Encoder_front.txt" />
+        <param name="targetLocation" value="/sampleData/h264Encoder_front.mp4" />
 
-        <remap from="~image" to="/sensor_stack/cameras/stereo_front/zed_node/left/image_rect_color" />
+        <remap from="~image" to="/VideoRaw" />
   </node>
 
   <!--node name="h264_encoder_depth" pkg="image_h264_encoder" type="image_h264_encoder_node" output="log">
