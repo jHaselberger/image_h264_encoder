@@ -16,6 +16,8 @@ VideoRawMono = rospy.Publisher('VideoRawMono', Image, queue_size=10)
 
 rate = rospy.Rate(30) 
 
+bridge = CvBridge()
+
 while not rospy.is_shutdown():
 
     if not cam.isOpened():
@@ -26,10 +28,10 @@ while not rospy.is_shutdown():
 
     frameMono = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    msg_frame = CvBridge().cv2_to_imgmsg(frame)
-    msg_frame_mono = CvBridge().cv2_to_imgmsg(frameMono)
+    msg_frame = bridge.cv2_to_imgmsg(frame, encoding="passthrough")
+    msg_frame_mono = bridge.cv2_to_imgmsg(frameMono, encoding="passthrough")
 
-    VideoRaw.publish(msg_frame, "RGB8")
+    VideoRaw.publish(msg_frame, "bgr8")
     VideoRawMono.publish(msg_frame_mono, "mono8")
 
     rate.sleep()
