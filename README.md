@@ -31,6 +31,12 @@ GStreamer:
 ```
 
 ## NVIDIA H264 encoder
+### Test
+To test if the encoder is installed properly:
+```shell
+gst-launch-1.0 filesrc location=./sample.mp4 ! qtdemux  ! h264parse ! avdec_h264 ! nvh264enc rc-mode=2 bitrate=10000 ! h264parse ! mp4mux ! filesink location=./encoded.mp4
+```
+### Installation
  1. Download the Vision SDK from https://developer.nvidia.com/nvidia-video-codec-sdk/download 
  2. check if current nvidia driver is sufficent with `nvidia-smi`
  3. Install the SDK:
@@ -81,10 +87,7 @@ GStreamer:
     ```
 
    
-To test if the encoder is installed properly:
-```shell
-gst-launch-1.0 filesrc location=./sample.mp4 ! qtdemux  ! h264parse ! avdec_h264 ! nvh264enc rc-mode=2 bitrate=10000 ! h264parse ! mp4mux ! filesink location=./encoded.mp4
-```
+
 
 # Common issues
 ## openCV is not found
