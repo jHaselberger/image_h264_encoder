@@ -34,50 +34,56 @@ GStreamer:
  1. Download the Vision SDK from https://developer.nvidia.com/nvidia-video-codec-sdk/download 
  2. check if current nvidia driver is sufficent with `nvidia-smi`
  3. Install the SDK:
- ```shell
-unzip Video_Codec_SDK.zip
-cd Video_Codec_SDK
+     ```shell
+    unzip Video_Codec_SDK.zip
+    cd Video_Codec_SDK
 
-sudo cp include/* /usr/local/cuda/include
-sudo cp Lib/linux/stubs/x86_64/* /usr/local/cuda/lib64/stubs
- ```
+    sudo cp include/* /usr/local/cuda/include
+    sudo cp Lib/linux/stubs/x86_64/* /usr/local/cuda/lib64/stubs
+     ```
  
  4. Get GStreamer Bad plugins
- ```shell
- sudo apt-get install gstreamer1.0-plugins-bad
- git clone https://github.com/GStreamer/gst-plugins-bad.git
-cd gst-plugins-bad
+     ```shell
+     sudo apt-get install gstreamer1.0-plugins-bad
+     git clone https://github.com/GStreamer/gst-plugins-bad.git
+    cd gst-plugins-bad
 
-git checkout $(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1)
+    git checkout $(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1)
 
-./autogen.sh --disable-gtk-doc --noconfigure
+    ./autogen.sh --disable-gtk-doc --noconfigure
 
-export NVENCODE_CFLAGS="-I/usr/local/cuda/include"
-./configure --with-cuda-prefix="/usr/local/cuda"
- ```
+    export NVENCODE_CFLAGS="-I/usr/local/cuda/include"
+    ./configure --with-cuda-prefix="/usr/local/cuda"
+     ```
 
 5. Check output to confirm that nvenc, nvdec plugins is going to be build
 
 6. Build and install nvenc
-```
-cd sys/nvenc
-make 
-sudo make install
-cd ../..
-```
+    ```
+    cd sys/nvenc
+    make 
+    sudo make install
+    cd ../..
+    ```
 
 7. Build and install nvdec
-```
-cd sys/nvdec
-make 
-sudo make install
-cd ../..
-```
+    ```
+    cd sys/nvdec
+    make 
+    sudo make install
+    cd ../..
+    ```
 
 8. Add GST_PLUGIN_PATH to bashrc
-```
-echo "export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/usr/local/lib/gstreamer-1.0/" >> ~/.bashrc
-source ~/.bashrc
+    ```
+    echo "export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/usr/local/lib/gstreamer-1.0/" >> ~/.bashrc
+    source ~/.bashrc
+    ```
+
+   
+To test if the encoder is installed properly:
+```shell
+gst-launch-1.0 filesrc location=./sample.mp4 ! qtdemux  ! h264parse ! avdec_h264 ! nvh264enc rc-mode=2 bitrate=10000 ! h264parse ! mp4mux ! filesink location=./encoded.mp4
 ```
 
 # Common issues
