@@ -1,5 +1,3 @@
-#define OPENCVVERSION 3
-
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
@@ -18,24 +16,26 @@
 #include "std_msgs/String.h"
 using namespace std;
 
-bool debugmode = false;
-
 int _imageHeight = -1;
 int _imageWidth = -1;
 
 int _fps = 20;
 cv::VideoWriter videoWriter;
-string logFilePath = "/tmp/recorderLog.txt";
 ofstream *logFile = nullptr;
 int _currentFrame = 0;
 int _decoderType = 0;
 
-// Support for gray and depth images
-bool _isGrayImage = false;
+bool _publishScaledImage = false;
+float _imageScaleFactor = 0.25;
+
+// Support for depth images
 bool _isDepthImage = false;
 float _maxDepth = 100.0;
 cv::Mat *monoImg = nullptr;
-cv::Mat rgbImg;
+cv::Mat rgbDepthImg;
+cv::Mat scaledImg;
+cv_bridge::CvImage scaledImgBridge;
+sensor_msgs::Image scaledImgMsg;
 
 // Define the basic Gstreamer pipeline
 string _gstPipelineTemplate = "appsrc ! videoconvert ! %s bitrate=%d ! %s mp4mux ! filesink location=%s ";
@@ -46,14 +46,9 @@ int _bitrate = 10000;
 string _parser = "h264parse !";
 string _location = "/tmp/pipe.mp4";
 
-// Publisher for the image header
-ros::Publisher pub;
-
-void _logDebug(std::string what, bool enable = debugmode) {
-    if (enable) {
-        std::cout << "\n\t-> " << what << std::endl;
-    }
-}
+// Publisher for the image header and scaled image
+ros::Publisher headerPub;
+ros::Publisher imagePub;
 
 // found here: https://stackoverflow.com/questions/3418231/replace-part-of-a-string-with-another-string
 bool _replace(std::string &str, const std::string &from, const std::string &to) {
@@ -76,8 +71,6 @@ void _replaceAll(std::string &str, const std::string &from, const std::string &t
 }
 
 bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
-    _logDebug("call initialize");
-
     _imageHeight = h;
     _imageWidth = w;
 
@@ -114,22 +107,8 @@ bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
     try {
         string _gstPipeline = boost::str(boost::format(_gstPipelineTemplate) % _encoder % _bitrate % _parser % _locationTS);
         ROS_INFO("GSTP: %s", _gstPipeline.c_str());
-
-#if OPENCVVERSION == 3
-        videoWriter.open(_gstPipeline, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
-#else
         videoWriter.open(_gstPipeline, cv::CAP_GSTREAMER, 0, (double)_fps, cv::Size(_imageWidth, _imageHeight));
-#endif
-
         logFile = new ofstream(_logFilePathTS);
-
-        *logFile << "Recording options: " << _encoder << " bitrate=" << _bitrate << "\n";
-        *logFile << "fileFrameNumber"
-                 << " "
-                 << "seq"
-                 << " "
-                 << "timeStamp"
-                 << "\n";
 
         return true;
     } catch (const std::exception &e) {
@@ -138,18 +117,16 @@ bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
     }
 }
 
-string getTimeStampString(ros::Time rosTime) {
+string getTimeStampString(ros::Time rosTime, int hoursOffset = 2) {
+    rosTime = rosTime + ros::Duration(hoursOffset * 60 * 60);
     return boost::posix_time::to_iso_extended_string(rosTime.toBoost());
 }
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
-    _logDebug("Entering image callback");
     auto start = std::chrono::high_resolution_clock::now();
     // get some information from the header
     uint32_t _seq = msg->header.seq;
     ros::Time _stamp = msg->header.stamp;
-
-    _logDebug("Start getting the image data");
 
     cv_bridge::CvImagePtr cv_ptr;
     if (_isDepthImage) {
@@ -159,45 +136,31 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
                 monoImg = new cv::Mat(cv_ptr->image.size(), CV_8UC1);
             }
             cv::convertScaleAbs(cv_ptr->image, *monoImg, 255.0 / _maxDepth, 0.0);
-            cv::cvtColor(*monoImg, rgbImg, cv::COLOR_GRAY2RGB);
+            cv::cvtColor(*monoImg, rgbDepthImg, cv::COLOR_GRAY2RGB);
         } catch (const std::exception &e) {
             ROS_ERROR("DepthImage: cv_bridge exception: %s", e.what());
             std::cerr << e.what() << '\n';
             return;
         }
 
-    } else if (_isGrayImage) {
-        try {
-            cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
-            cv::cvtColor(cv_ptr->image, rgbImg, cv::COLOR_GRAY2RGB);  // TODO: or maybe the pointer *cv_ptr->image
-        } catch (const std::exception &e) {
-            ROS_ERROR("Gray: cv_bridge exception: %s", e.what());
-            std::cerr << e.what() << '\n';
-            return;
-        }
     } else {
         try {
             cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-            _logDebug("Successfully fetched image pointer");
         } catch (cv_bridge::Exception &e) {
-            _logDebug("Error while getting the image pointer");
             ROS_ERROR("RGBImage: cv_bridge exception: %s", e.what());
             return;
         }
     }
 
-    _logDebug("Now check for init");
-
     // do we have to initialize?
     if (_imageHeight == -1) {
-        _logDebug("Yes we have to init");
         //assert(("Error during initialization", initialize(cv_ptr->image.cols, cv_ptr->image.rows, _decoderType)));
         _initialize(cv_ptr->image.cols, cv_ptr->image.rows, getTimeStampString(_stamp), _decoderType);
     }
 
     // write the image to the h264 file
-    if (_isDepthImage || _isGrayImage) {
-        videoWriter.write(rgbImg);
+    if (_isDepthImage) {
+        videoWriter.write(rgbDepthImg);
     } else {
         videoWriter.write(cv_ptr->image);
     }
@@ -205,13 +168,28 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     // write to the log file
     *logFile << _currentFrame << " " << _seq << " " << getTimeStampString(_stamp) << "\n";
 
+    // scale the image and publish
+    if (_publishScaledImage) {
+        if (_isDepthImage) {
+            cv::resize(rgbDepthImg, scaledImg, cv::Size(), _imageScaleFactor, _imageScaleFactor);
+        } else {
+            cv::resize(cv_ptr->image, scaledImg, cv::Size(), _imageScaleFactor, _imageScaleFactor);
+        }
+        scaledImgBridge.header = msg->header;
+        scaledImgBridge.image = scaledImg;
+        scaledImgBridge.encoding = "bgr8";
+        scaledImgBridge.toImageMsg(scaledImgMsg);
+
+        imagePub.publish(scaledImgMsg);
+    }
+
     _currentFrame += 1;
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
     double _hz = 1.0 / elapsed.count();
 
     ROS_INFO("Capable of %f fps", _hz);
-    pub.publish(msg->header);
+    headerPub.publish(msg->header);
 }
 
 int main(int argc, char **argv) {
@@ -220,17 +198,22 @@ int main(int argc, char **argv) {
 
     // get some parameters
     n.getParam("fps", _fps);
-    n.getParam("logFilePath", logFilePath);
     n.getParam("decoderType", _decoderType);
     n.getParam("bitrate", _bitrate);
     n.getParam("targetLocation", _location);
 
     n.getParam("isDepthImage", _isDepthImage);
-    n.getParam("isGrayImage", _isGrayImage);
     n.getParam("maxDepth", _maxDepth);
 
+    n.getParam("publishScaledImage", _publishScaledImage);
+    n.getParam("imageScaleFactor", _imageScaleFactor);
+
     ros::Subscriber sub = n.subscribe("image", 1000, imageCallback);
-    pub = n.advertise<std_msgs::Header>("header", 1000);
+    headerPub = n.advertise<std_msgs::Header>("header", 1000);
+
+    if (_publishScaledImage) {
+        imagePub = n.advertise<sensor_msgs::Image>("scaled_image", 1000);
+    }
 
     ros::spin();
 

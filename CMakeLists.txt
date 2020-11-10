@@ -7,8 +7,8 @@ project(image_h264_encoder)
 ##find_package(OpenCV)
 ##include_directories(${OpenCV_INCLUDE_DIRS})
 
-## BUG fix for finding opencv
-set("OpenCV_DIR" $ENV{OpenCV_DIR})
+## BUG fix for opencv on superUFO
+set("OpenCV_DIR" "/home/ubuntu/OpenCV/Install-OpenCV/Ubuntu/OpenCV/opencv-3.4.3/build")
 #find_package(OpenCV 4.0.0 REQUIRED)
 
 ## Find catkin macros and libraries
