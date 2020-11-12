@@ -25,7 +25,7 @@ int _imageWidth = -1;
 
 int _fps = 20;
 cv::VideoWriter videoWriter;
-string logFilePath = "/tmp/recorderLog.txt";
+//string logFilePath = "/tmp/recorderLog.txt";
 ofstream *logFile = nullptr;
 int _currentFrame = 0;
 int _decoderType = 0;
@@ -36,6 +36,13 @@ bool _isDepthImage = false;
 float _maxDepth = 100.0;
 cv::Mat *monoImg = nullptr;
 cv::Mat rgbImg;
+
+// republish scaled image
+bool _publishScaledImage = false;
+float _imageScaleFactor = 0.25;
+cv::Mat scaledImg;
+cv_bridge::CvImage scaledImgBridge;
+sensor_msgs::Image scaledImgMsg;
 
 // Define the basic Gstreamer pipeline
 string _gstPipelineTemplate = "appsrc ! videoconvert ! %s bitrate=%d ! %s mp4mux ! filesink location=%s ";
@@ -48,6 +55,7 @@ string _location = "/tmp/pipe.mp4";
 
 // Publisher for the image header
 ros::Publisher pub;
+ros::Publisher imagePub;
 
 void _logDebug(std::string what, bool enable = debugmode) {
     if (enable) {
@@ -138,7 +146,8 @@ bool _initialize(int w, int h, std::string ts, int decoderType = 0) {
     }
 }
 
-string getTimeStampString(ros::Time rosTime) {
+string getTimeStampString(ros::Time rosTime, int hoursOffset = 2) {
+    rosTime = rosTime + ros::Duration(hoursOffset * 60 * 60);
     return boost::posix_time::to_iso_extended_string(rosTime.toBoost());
 }
 
@@ -205,6 +214,21 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     // write to the log file
     *logFile << _currentFrame << " " << _seq << " " << getTimeStampString(_stamp) << "\n";
 
+    // scale the image and publish
+    if (_publishScaledImage) {
+        if (_isDepthImage || _isGrayImage) {
+            cv::resize(rgbImg, scaledImg, cv::Size(), _imageScaleFactor, _imageScaleFactor);
+        } else {
+            cv::resize(cv_ptr->image, scaledImg, cv::Size(), _imageScaleFactor, _imageScaleFactor);
+        }
+        scaledImgBridge.header = msg->header;
+        scaledImgBridge.image = scaledImg;
+        scaledImgBridge.encoding = "bgr8";  // TODO: check if this is working for zFAS images
+        scaledImgBridge.toImageMsg(scaledImgMsg);
+
+        imagePub.publish(scaledImgMsg);
+    }
+
     _currentFrame += 1;
     auto finish = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = finish - start;
@@ -220,7 +244,7 @@ int main(int argc, char **argv) {
 
     // get some parameters
     n.getParam("fps", _fps);
-    n.getParam("logFilePath", logFilePath);
+    //n.getParam("logFilePath", logFilePath);
     n.getParam("decoderType", _decoderType);
     n.getParam("bitrate", _bitrate);
     n.getParam("targetLocation", _location);
@@ -229,8 +253,15 @@ int main(int argc, char **argv) {
     n.getParam("isGrayImage", _isGrayImage);
     n.getParam("maxDepth", _maxDepth);
 
+    n.getParam("publishScaledImage", _publishScaledImage);
+    n.getParam("imageScaleFactor", _imageScaleFactor);
+
     ros::Subscriber sub = n.subscribe("image", 1000, imageCallback);
     pub = n.advertise<std_msgs::Header>("header", 1000);
+
+    if (_publishScaledImage) {
+        imagePub = n.advertise<sensor_msgs::Image>("scaled_image", 1000);
+    }
 
     ros::spin();
 
