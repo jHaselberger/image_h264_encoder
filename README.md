@@ -3,11 +3,14 @@ Example:
 ```xml
 <launch>
   <node name="h264_encoder" pkg="image_h264_encoder" type="image_h264_encoder_node" output="log">
-    <param name="fps" value="20" />
+    <param name="fps" value="30" />
     <param name="bitrate" value="10000" />
-    <param name="decoderType" value="0" />
-    <param name="logFilePath" value="/tmp/rec/h264Encoder.txt" />
-    <param name="targetLocation" value="/tmp/rec/h264Encoder10k.mp4" />
+    <param name="targetLocation" value="./h264Encoder_front.mp4" />
+
+    <param name="publishScaledImage" value="true"/>
+    <param name="imageScaleFactor" value="0.15"/>
+
+    <remap from="~image" to="/front_camera" />
   </node>
 </launch>
 ```
