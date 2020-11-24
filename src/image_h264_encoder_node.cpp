@@ -153,7 +153,10 @@ string getTimeStampString(ros::Time rosTime, int hoursOffset = 2) {
 
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     _logDebug("Entering image callback");
-    auto start = std::chrono::high_resolution_clock::now();
+    if (debugmode) {
+        auto start = std::chrono::high_resolution_clock::now();
+    }
+
     // get some information from the header
     uint32_t _seq = msg->header.seq;
     ros::Time _stamp = msg->header.stamp;
@@ -229,12 +232,19 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
         imagePub.publish(scaledImgMsg);
     }
 
-    _currentFrame += 1;
-    auto finish = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = finish - start;
-    double _hz = 1.0 / elapsed.count();
+    if (_currentFrame % 100 == 0){
+        ROS_INFO("H264 Encoder: saving frame %d", _currentFrame);
+    }
 
-    ROS_INFO("Capable of %f fps", _hz);
+    if (debugmode) {
+        auto finish = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = finish - start;
+        double _hz = 1.0 / elapsed.count();
+        ROS_INFO("Capable of %f fps", _hz);
+    }
+
+    _currentFrame += 1;
+
     pub.publish(msg->header);
 }
 
