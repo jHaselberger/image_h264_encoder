@@ -58,7 +58,7 @@ ros::Publisher pub;
 ros::Publisher imagePub;
 
 // for logging
-auto start;
+auto start = std::chrono::high_resolution_clock::now();;
 
 void _logDebug(std::string what, bool enable = debugmode) {
     if (enable) {
