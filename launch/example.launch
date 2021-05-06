@@ -7,6 +7,7 @@
         <param name="decoderType" value="0" />
         <param name="logFilePath" value="/sampleData/h264Encoder_front.txt" />
         <param name="targetLocation" value="/sampleData/h264Encoder_front.mp4" />
+        <param name="debugPrefix" value="MyCam1" />
 
         <remap from="~image" to="/VideoRaw" />
   </node>

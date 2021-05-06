@@ -30,6 +30,8 @@ ofstream *logFile = nullptr;
 int _currentFrame = 0;
 int _decoderType = 0;
 
+string _debugPrefix = "";
+
 // Support for gray and depth images
 bool _isGrayImage = false;
 bool _isDepthImage = false;
@@ -177,7 +179,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
             std::cerr << e.what() << '\n';
             return;
         }
-
     } else if (_isGrayImage) {
         try {
             cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
@@ -232,8 +233,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
         imagePub.publish(scaledImgMsg);
     }
 
-    if (_currentFrame % 100 == 0){
-        ROS_INFO("H264 Encoder: saving frame %d", _currentFrame);
+    if (_currentFrame % 100 == 0) {
+        ROS_INFO("%s H264 Encoder: saving frame %d", _debugPrefix, _currentFrame);
     }
 
     if (debugmode) {
@@ -265,6 +266,8 @@ int main(int argc, char **argv) {
 
     n.getParam("publishScaledImage", _publishScaledImage);
     n.getParam("imageScaleFactor", _imageScaleFactor);
+
+    n.getParam("debugPrefix", _debugPrefix);
 
     ros::Subscriber sub = n.subscribe("image", 1000, imageCallback);
     pub = n.advertise<std_msgs::Header>("header", 1000);
