@@ -59,6 +59,9 @@ string _location = "/tmp/pipe.mp4";
 ros::Publisher pub;
 ros::Publisher imagePub;
 
+// for logging
+auto start = std::chrono::high_resolution_clock::now();;
+
 void _logDebug(std::string what, bool enable = debugmode) {
     if (enable) {
         std::cout << "\n\t-> " << what << std::endl;
@@ -156,7 +159,7 @@ string getTimeStampString(ros::Time rosTime, int hoursOffset = 2) {
 void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     _logDebug("Entering image callback");
     if (debugmode) {
-        auto start = std::chrono::high_resolution_clock::now();
+        start = std::chrono::high_resolution_clock::now();
     }
 
     // get some information from the header
