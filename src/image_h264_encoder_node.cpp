@@ -237,7 +237,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr &msg) {
     }
 
     if (_currentFrame % 100 == 0) {
-        ROS_INFO("%s H264 Encoder: saving frame %d", _debugPrefix, _currentFrame);
+        ROS_INFO("%s H264 Encoder: saving frame %d", _debugPrefix.c_str(), _currentFrame);
     }
 
     if (debugmode) {
